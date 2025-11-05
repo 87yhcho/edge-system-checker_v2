@@ -62,3 +62,6 @@ test_*.py
 # Documentation (제외할 필요 없으면 주석 처리)
 # *.md
 
+# Backup folders
+edge-system-checker-backup-*/
+

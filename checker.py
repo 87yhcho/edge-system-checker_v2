@@ -12,17 +12,25 @@ from dotenv import load_dotenv
 # 환경변수 로드
 load_dotenv()
 
+# 로거 초기화 (환경변수 로드 후)
+from utils.logger import setup_logger
+log_level = os.getenv('LOG_LEVEL', 'INFO')
+logger, log_file = setup_logger(level=log_level)
+
 from utils.ui import (
     print_header, print_info, print_warning, print_pass, print_fail,
     ask_input, ask_continue
 )
-from utils.reporter import save_report, print_summary
+from utils.reporter import save_report, save_json_report, save_html_report, print_summary
+from utils.progress import ProgressBar
+from utils.cli import parse_args, validate_args
 
 from checks.ups_check import check_ups_status
 from checks.camera_check import check_cameras
 from checks.pg_check import check_postgresql
 from checks.nas_check import check_nas_status
 from checks.system_check import check_system_status
+from checks.registry import registry
 
 
 def get_display_width(text):
@@ -90,11 +98,36 @@ def get_env_config():
     }
 
 
-def main():
+def main(args=None):
     """메인 실행 함수"""
+    # CLI 인자 파싱
+    cli_args = parse_args(args)
+    
+    # --list-checks 옵션 처리
+    if cli_args.list_checks:
+        print("등록된 점검 항목:")
+        for check_name in ['ups', 'camera', 'nas', 'system']:
+            print(f"  - {check_name}")
+        sys.exit(0)
+    
+    # 인자 검증
+    if not validate_args(cli_args):
+        sys.exit(1)
+    
+    # 로그 레벨 설정 (CLI 인자가 우선)
+    if cli_args.log_level:
+        import logging
+        logging.getLogger().setLevel(getattr(logging, cli_args.log_level))
+        logger.setLevel(getattr(logging, cli_args.log_level))
+    
+    logger.info("=" * 80)
+    logger.info("Edge 시스템 점검 도구 시작")
+    logger.info(f"로그 파일: {log_file}")
+    
     print_header("Edge 시스템 점검 도구")
     
     print_info("이 도구는 Edge 시스템의 상태를 순차적으로 점검합니다.")
+    print_info(f"로그 파일: {log_file}")
     print("")
     
     # 설정 로드
@@ -106,107 +139,170 @@ def main():
         'summary': {}
     }
     
-    # 전체 실행 모드 선택 (자동/수동)
-    print_info("실행 모드를 선택하세요:")
-    print("  1. 자동 모드 (모든 점검을 자동으로 진행, 확인 없이)")
-    print("  2. 수동 모드 (각 항목마다 확인 후 진행)")
-    run_mode_str = ask_input("실행 모드 선택 [1: 자동 / 2: 수동]", "1")
+    # CLI 인자에서 설정 가져오기
+    selected_checks = cli_args.checks
+    full_auto_mode = cli_args.auto
     
-    if run_mode_str == "1":
-        full_auto_mode = True
-        print_info("🤖 자동 모드 선택: 모든 점검을 자동으로 진행합니다.")
+    # CLI 인자가 없으면 대화형 입력
+    if not cli_args.auto and cli_args.interactive:
+        # 전체 실행 모드 선택 (자동/수동)
+        print_info("실행 모드를 선택하세요:")
+        print("  1. 자동 모드 (모든 점검을 자동으로 진행, 확인 없이)")
+        print("  2. 수동 모드 (각 항목마다 확인 후 진행)")
+        run_mode_str = ask_input("실행 모드 선택 [1: 자동 / 2: 수동]", "1")
+        
+        if run_mode_str == "1":
+            full_auto_mode = True
+            print_info("🤖 자동 모드 선택: 모든 점검을 자동으로 진행합니다.")
+        else:
+            full_auto_mode = False
+            print_info("👤 수동 모드 선택: 각 항목마다 확인 후 진행합니다.")
+        print("")
+        
+        # 점검 항목 선택 (CLI에서 지정 안 했을 때만)
+        if not cli_args.checks or cli_args.checks == ['all']:
+            print_info("점검할 항목을 선택하세요:")
+            print("  1. UPS/NUT 상태")
+            print("  2. 카메라 RTSP")
+            print("  3. NAS 상태")
+            print("  4. 시스템 종합")
+            check_choice = ask_input("선택 [1,2,3,4 또는 all] (쉼표로 구분)", "all")
+            
+            if check_choice.lower() == 'all':
+                selected_checks = ['ups', 'camera', 'nas', 'system']
+                print_info("✓ 모든 항목 점검")
+            else:
+                mapping = {'1': 'ups', '2': 'camera', '3': 'nas', '4': 'system'}
+                selected_checks = []
+                for num in check_choice.split(','):
+                    num = num.strip()
+                    if num in mapping:
+                        selected_checks.append(mapping[num])
+                
+                if not selected_checks:
+                    print_warning("선택된 항목이 없습니다. 모든 항목을 점검합니다.")
+                    selected_checks = ['ups', 'camera', 'nas', 'system']
+                else:
+                    check_names = {'ups': 'UPS/NUT', 'camera': '카메라', 'nas': 'NAS', 'system': '시스템'}
+                    selected_names = [check_names.get(c, c) for c in selected_checks]
+                    print_info(f"✓ 선택된 항목: {', '.join(selected_names)}")
+            print("")
     else:
-        full_auto_mode = False
-        print_info("👤 수동 모드 선택: 각 항목마다 확인 후 진행합니다.")
-    print("")
+        # CLI 인자 사용
+        check_names = {'ups': 'UPS/NUT', 'camera': '카메라', 'nas': 'NAS', 'system': '시스템'}
+        selected_names = [check_names.get(c, c) for c in selected_checks]
+        print_info(f"✓ 선택된 항목: {', '.join(selected_names)}")
+        if full_auto_mode:
+            print_info("🤖 자동 모드로 실행합니다.")
+        else:
+            print_info("👤 수동 모드로 실행합니다.")
+        print("")
     
     # 카메라 점검 모드 선택
-    print_info("카메라 점검 모드를 선택하세요:")
-    print("  1. GUI 모드 (장비에서 직접 실행, 영상 확인)")
-    print("  2. Auto 모드 (SSH 원격 실행, 자동 검증)")
-    mode_str = ask_input("모드 선택 [1: GUI / 2: Auto]", "2")
-    
-    if mode_str == "1":
-        auto_mode = False
-        print_info("🖥️  GUI 모드 선택: 각 카메라 영상을 확인하고 판정합니다.")
+    if cli_args.camera_mode:
+        auto_mode = (cli_args.camera_mode == 'auto')
     else:
-        auto_mode = True
-        print_info("📡 Auto 모드 선택: 영상 표시 없이 스트림 상태만 자동 검증합니다.")
+        print_info("카메라 점검 모드를 선택하세요:")
+        print("  1. GUI 모드 (장비에서 직접 실행, 영상 확인)")
+        print("  2. Auto 모드 (SSH 원격 실행, 자동 검증)")
+        mode_str = ask_input("모드 선택 [1: GUI / 2: Auto]", "2")
+        
+        auto_mode = (mode_str != "1")
+    
+    if auto_mode:
+        print_info("📡 Auto 모드: 영상 표시 없이 스트림 상태만 자동 검증합니다.")
+    else:
+        print_info("🖥️  GUI 모드: 각 카메라 영상을 확인하고 판정합니다.")
     print("")
     
-    # 사용자 입력: 카메라 개수
-    camera_count_str = ask_input("점검할 카메라 개수를 입력하세요", "4")
-    try:
-        camera_count = int(camera_count_str)
-        if camera_count < 0:
-            camera_count = 0
-    except ValueError:
-        print_warning("잘못된 입력입니다. 기본값 4를 사용합니다.")
-        camera_count = 4
+    # 카메라 개수 설정
+    if cli_args.camera_count is not None:
+        camera_count = cli_args.camera_count
+    else:
+        camera_count_str = ask_input("점검할 카메라 개수를 입력하세요", "4")
+        try:
+            camera_count = int(camera_count_str)
+            if camera_count < 0:
+                camera_count = 0
+        except ValueError:
+            print_warning("잘못된 입력입니다. 기본값 4를 사용합니다.")
+            camera_count = 4
     
     print("")
     print_info(f"점검 시작: {results['timestamp']}")
     print_info(f"카메라 개수: {camera_count}대")
     print("")
     
-    # ========== 1. UPS/NUT 점검 ==========
-    while True:
-        try:
-            ups_result = check_ups_status(
-                ups_name=config['nut']['ups_name'],
-                nas_ip=config['nas']['ip']
-            )
-            results['ups'] = ups_result
-            
-            # 자동 모드면 확인 없이 계속 진행
-            if full_auto_mode:
-                print_info("자동 모드: 다음 단계로 진행합니다.")
-                break
-            
-            # 사용자 컨펌
-            user_action = ask_continue("UPS 점검 완료. 다음 단계로 진행하시겠습니까?")
-            if user_action == 'quit':
-                print_warning("사용자가 점검을 중단했습니다.")
-                results['summary']['status'] = 'QUIT'
-                save_and_exit(results)
-                return
-            elif user_action == 'retry':
-                print_info("UPS 점검을 다시 수행합니다...")
-                continue  # 루프 계속 (재시도)
-            else:
-                break  # 루프 탈출 (계속 진행)
-        
-        except KeyboardInterrupt:
-            print("")
-            print_warning("사용자가 점검을 중단했습니다.")
-            results['summary']['status'] = 'INTERRUPTED'
-            save_and_exit(results)
-            return
-        except Exception as e:
-            print_fail(f"UPS 점검 중 오류 발생: {str(e)}")
-            results['ups'] = {'status': 'ERROR', 'error': str(e)}
-            
-            # 자동 모드면 오류 발생해도 계속 진행
-            if full_auto_mode:
-                print_info("자동 모드: 오류가 발생했지만 계속 진행합니다.")
-                break
-            
-            user_action = ask_continue("오류가 발생했습니다. 계속 진행하시겠습니까?")
-            if user_action == 'quit':
-                save_and_exit(results)
-                return
-            elif user_action == 'retry':
-                print_info("UPS 점검을 다시 수행합니다...")
-                continue  # 루프 계속 (재시도)
-            else:
-                break  # 루프 탈출 (계속 진행)
+    # 전체 진행률 프로그레스 바 초기화
+    total_checks = len(selected_checks)
+    progress = ProgressBar(total=total_checks, desc="전체 점검 진행률")
+    progress.update(0, "시작")
     
-    # ========== 2. 카메라 점검 ==========
-    if camera_count > 0:
+    # ========== 1. UPS/NUT 점검 ==========
+    if 'ups' in selected_checks:
         while True:
             try:
-                camera_result = check_cameras(camera_count, config['camera'], auto_mode=auto_mode)
+                ups_result = check_ups_status(
+                    ups_name=config['nut']['ups_name'],
+                    nas_ip=config['nas']['ip']
+                )
+                results['ups'] = ups_result
+                progress.update(1, "UPS 점검 완료")
+                
+                # 자동 모드면 확인 없이 계속 진행
+                if full_auto_mode:
+                    print_info("자동 모드: 다음 단계로 진행합니다.")
+                    break
+                
+                # 사용자 컨펌
+                user_action = ask_continue("UPS 점검 완료. 다음 단계로 진행하시겠습니까?")
+                if user_action == 'quit':
+                    print_warning("사용자가 점검을 중단했습니다.")
+                    results['summary']['status'] = 'QUIT'
+                    save_and_exit(results, output_formats=cli_args.output_format, output_dir=cli_args.output_dir)
+                    return
+                elif user_action == 'retry':
+                    print_info("UPS 점검을 다시 수행합니다...")
+                    continue  # 루프 계속 (재시도)
+                else:
+                    break  # 루프 탈출 (계속 진행)
+            
+            except KeyboardInterrupt:
+                print("")
+                print_warning("사용자가 점검을 중단했습니다.")
+                results['summary']['status'] = 'INTERRUPTED'
+                save_and_exit(results, output_formats=cli_args.output_format, output_dir=cli_args.output_dir)
+                return
+            except Exception as e:
+                print_fail(f"UPS 점검 중 오류 발생: {str(e)}")
+                results['ups'] = {'status': 'ERROR', 'error': str(e)}
+                
+                # 자동 모드면 오류 발생해도 계속 진행
+                if full_auto_mode:
+                    print_info("자동 모드: 오류가 발생했지만 계속 진행합니다.")
+                    break
+                
+                user_action = ask_continue("오류가 발생했습니다. 계속 진행하시겠습니까?")
+                if user_action == 'quit':
+                    save_and_exit(results, output_formats=cli_args.output_format, output_dir=cli_args.output_dir)
+                    return
+                elif user_action == 'retry':
+                    print_info("UPS 점검을 다시 수행합니다...")
+                    continue  # 루프 계속 (재시도)
+                else:
+                    break  # 루프 탈출 (계속 진행)
+    else:
+        print_info("UPS 점검을 건너뜁니다 (선택되지 않음)")
+        results['ups'] = {'status': 'SKIP', 'reason': 'Not selected'}
+    
+    # ========== 2. 카메라 점검 ==========
+    if 'camera' in selected_checks:
+        if camera_count > 0:
+            while True:
+                try:
+                    camera_result = check_cameras(camera_count, config['camera'], auto_mode=auto_mode)
                 results['cameras'] = camera_result
+                progress.update(1, "카메라 점검 완료")
                 
                 if camera_result.get('status') == 'QUIT':
                     print_warning("사용자가 카메라 점검을 중단했습니다.")
@@ -256,9 +352,17 @@ def main():
                     continue  # 루프 계속 (재시도)
                 else:
                     break  # 루프 탈출 (계속 진행)
+        else:
+            if camera_count == 0:
+                print_warning("카메라 점검을 건너뜁니다 (카메라 개수: 0)")
+                results['cameras'] = {'status': 'SKIP', 'total': 0}
+                progress.update(1, "카메라 점검 건너뜀")
+            else:
+                print_info("카메라 점검을 건너뜁니다 (선택되지 않음)")
+                results['cameras'] = {'status': 'SKIP', 'reason': 'Not selected'}
     else:
-        print_warning("카메라 점검을 건너뜁니다 (카메라 개수: 0)")
-        results['cameras'] = {'status': 'SKIP', 'total': 0}
+        print_info("카메라 점검을 건너뜁니다 (선택되지 않음)")
+        results['cameras'] = {'status': 'SKIP', 'reason': 'Not selected'}
     
     # ========== 3. PostgreSQL 점검 ========== (현재 비활성화)
     # try:
@@ -291,10 +395,12 @@ def main():
     #         return
     
     # ========== 3. NAS 점검 ==========
-    while True:
-        try:
-            nas_result = check_nas_status(config['nas'])
+    if 'nas' in selected_checks:
+        while True:
+            try:
+                nas_result = check_nas_status(config['nas'])
             results['nas'] = nas_result
+            progress.update(1, "NAS 점검 완료")
             
             # 자동 모드면 확인 없이 계속 진행
             if full_auto_mode:
@@ -338,29 +444,41 @@ def main():
                 continue  # 루프 계속 (재시도)
             else:
                 break  # 루프 탈출 (계속 진행)
+    else:
+        print_info("NAS 점검을 건너뜁니다 (선택되지 않음)")
+        results['nas'] = {'status': 'SKIP', 'reason': 'Not selected'}
     
     # ========== 4. 시스템 종합 점검 ==========
-    try:
-        system_result = check_system_status()
-        results['system'] = system_result
+    if 'system' in selected_checks:
+        try:
+            system_result = check_system_status()
+            results['system'] = system_result
+            progress.finish("모든 점검 완료")
+            
+            print("")
+            print_info("모든 점검이 완료되었습니다!")
         
-        print("")
-        print_info("모든 점검이 완료되었습니다!")
-    
-    except KeyboardInterrupt:
-        print("")
-        print_warning("사용자가 점검을 중단했습니다.")
-        results['summary']['status'] = 'INTERRUPTED'
-        save_and_exit(results)
-        return
-    except Exception as e:
-        print_fail(f"시스템 종합 점검 중 오류 발생: {str(e)}")
-        results['system'] = {'status': 'ERROR', 'error': str(e)}
+        except KeyboardInterrupt:
+            print("")
+            print_warning("사용자가 점검을 중단했습니다.")
+            results['summary']['status'] = 'INTERRUPTED'
+            save_and_exit(results)
+            return
+        except Exception as e:
+            print_fail(f"시스템 종합 점검 중 오류 발생: {str(e)}")
+            results['system'] = {'status': 'ERROR', 'error': str(e)}
+    else:
+        print_info("시스템 점검을 건너뜁니다 (선택되지 않음)")
+        results['system'] = {'status': 'SKIP', 'reason': 'Not selected'}
     
     # ========== 최종 요약 ==========
     generate_summary(results)
     print_final_summary_table(results)
-    save_and_exit(results)
+    
+    # CLI 인자에서 출력 포맷과 디렉토리 가져오기
+    output_formats = cli_args.output_format if 'cli_args' in locals() else ['txt', 'json', 'html']
+    output_dir = cli_args.output_dir if 'cli_args' in locals() else "."
+    save_and_exit(results, output_formats=output_formats, output_dir=output_dir)
 
 
 def generate_summary(results: dict):
@@ -599,20 +717,45 @@ def print_final_summary_table(results: dict):
     print("")
 
 
-def save_and_exit(results: dict):
+def save_and_exit(results: dict, output_formats: list = None, output_dir: str = "."):
     """결과 저장 및 종료"""
     from utils.ui import print_info, print_pass
     
     print("")
     print_summary(results)
     
-    # 리포트 저장
-    try:
-        report_file = save_report(results)
+    # 리포트 저장 (지정된 포맷만)
+    if output_formats is None:
+        output_formats = ['txt', 'json', 'html']
+    
+    report_files = []
+    
+    if 'txt' in output_formats:
+        try:
+            txt_file = save_report(results, output_dir=output_dir)
+            report_files.append(f"TXT: {txt_file}")
+        except Exception as e:
+            print_fail(f"TXT 리포트 저장 실패: {str(e)}")
+    
+    if 'json' in output_formats:
+        try:
+            json_file = save_json_report(results, output_dir=output_dir)
+            report_files.append(f"JSON: {json_file}")
+        except Exception as e:
+            print_fail(f"JSON 리포트 저장 실패: {str(e)}")
+    
+    if 'html' in output_formats:
+        try:
+            html_file = save_html_report(results, output_dir=output_dir)
+            report_files.append(f"HTML: {html_file}")
+        except Exception as e:
+            print_fail(f"HTML 리포트 저장 실패: {str(e)}")
+    
+    if report_files:
         print("")
-        print_pass(f"리포트가 저장되었습니다: {report_file}")
-    except Exception as e:
-        print_fail(f"리포트 저장 실패: {str(e)}")
+        print_pass("리포트 저장 완료:")
+        for file_info in report_files:
+            print(f"  {file_info}")
     
     print("")
     print_info("점검을 종료합니다.")

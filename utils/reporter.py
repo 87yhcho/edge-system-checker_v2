@@ -1,8 +1,9 @@
 """
 리포트 생성 및 저장 모듈
-점검 결과를 타임스탬프 포함 텍스트 파일로 저장
+점검 결과를 타임스탬프 포함 텍스트, JSON, HTML 파일로 저장
 """
 import os
+import json
 from datetime import datetime
 from typing import Dict, Any
 
@@ -403,4 +404,289 @@ def print_summary(results: Dict[str, Any]):
                 print(f"  {key}: {value}")
     
     print("")
+
+
+def generate_json_report(results: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    JSON 포맷 리포트 생성
+    
+    Args:
+        results: 점검 결과 딕셔너리
+    
+    Returns:
+        JSON 직렬화 가능한 딕셔너리
+    """
+    timestamp = results.get('timestamp', datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    
+    return {
+        "timestamp": timestamp,
+        "format_version": "1.0",
+        "checks": {
+            "ups": results.get('ups', {}),
+            "cameras": results.get('cameras', {}),
+            "nas": results.get('nas', {}),
+            "system": results.get('system', {})
+        },
+        "summary": results.get('summary', {})
+    }
+
+
+def save_json_report(results: Dict[str, Any], output_dir: str = ".") -> str:
+    """
+    JSON 리포트 저장
+    
+    Args:
+        results: 점검 결과 딕셔너리
+        output_dir: 출력 디렉토리
+    
+    Returns:
+        저장된 파일 경로
+    """
+    reports_dir = os.path.join(output_dir, "reports")
+    os.makedirs(reports_dir, exist_ok=True)
+    
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    filename = f"report_{timestamp}.json"
+    filepath = os.path.join(reports_dir, filename)
+    
+    json_data = generate_json_report(results)
+    
+    with open(filepath, 'w', encoding='utf-8') as f:
+        json.dump(json_data, f, ensure_ascii=False, indent=2)
+    
+    return filepath
+
+
+def generate_html_report(results: Dict[str, Any]) -> str:
+    """
+    HTML 포맷 리포트 생성
+    
+    Args:
+        results: 점검 결과 딕셔너리
+    
+    Returns:
+        HTML 문자열
+    """
+    timestamp = results.get('timestamp', datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    
+    # 상태별 색상 클래스
+    def get_status_class(status: str) -> str:
+        status_upper = str(status).upper()
+        if 'PASS' in status_upper:
+            return 'pass'
+        elif 'FAIL' in status_upper:
+            return 'fail'
+        elif 'WARN' in status_upper or 'SKIP' in status_upper:
+            return 'warn'
+        else:
+            return 'skip'
+    
+    # 섹션 생성 헬퍼
+    def build_section(title: str, content: str) -> str:
+        return f"""
+        <div class="section">
+            <h2>{title}</h2>
+            {content}
+        </div>
+        """
+    
+    # 요약 섹션
+    summary_html = "<table><tr><th>항목</th><th>상태</th></tr>"
+    for key, value in results.get('summary', {}).items():
+        status_class = get_status_class(str(value))
+        summary_html += f"<tr><td>{key}</td><td class='{status_class}'>{value}</td></tr>"
+    summary_html += "</table>"
+    
+    # UPS 섹션
+    ups_html = ""
+    if 'ups' in results:
+        ups = results['ups']
+        ups_html = f"<p><strong>상태:</strong> <span class='{get_status_class(ups.get(\"status\", \"UNKNOWN\"))}'>{ups.get('status', 'UNKNOWN')}</span></p>"
+        if 'services' in ups:
+            ups_html += "<h3>NUT 서비스 상태</h3><ul>"
+            for service, status in ups['services'].items():
+                ups_html += f"<li>{service}: {status}</li>"
+            ups_html += "</ul>"
+    
+    # 카메라 섹션
+    cameras_html = ""
+    if 'cameras' in results:
+        cameras = results['cameras']
+        cameras_html = f"<p><strong>점검 대수:</strong> {cameras.get('total', 0)}</p>"
+        cameras_html += f"<p><strong>PASS:</strong> {cameras.get('pass_count', 0)}, "
+        cameras_html += f"<strong>FAIL:</strong> {cameras.get('fail_count', 0)}, "
+        cameras_html += f"<strong>SKIP:</strong> {cameras.get('skip_count', 0)}</p>"
+        
+        if 'details' in cameras:
+            cameras_html += "<h3>개별 카메라 상태</h3><table><tr><th>카메라</th><th>IP</th><th>원본</th><th>블러</th><th>로그</th></tr>"
+            for cam in cameras['details']:
+                name = cam.get('name', 'Unknown')
+                ip = cam.get('ip', 'N/A')
+                source_status = cam.get('source_status', 'UNKNOWN')
+                mediamtx_status = cam.get('mediamtx_status', 'UNKNOWN')
+                log_status = cam.get('log_status', 'UNKNOWN')
+                cameras_html += f"<tr><td>{name}</td><td>{ip}</td>"
+                cameras_html += f"<td class='{get_status_class(source_status)}'>{source_status}</td>"
+                cameras_html += f"<td class='{get_status_class(mediamtx_status)}'>{mediamtx_status}</td>"
+                cameras_html += f"<td class='{get_status_class(log_status)}'>{log_status}</td></tr>"
+            cameras_html += "</table>"
+    
+    # NAS 섹션
+    nas_html = ""
+    if 'nas' in results:
+        nas = results['nas']
+        nas_html = f"<p><strong>상태:</strong> <span class='{get_status_class(nas.get(\"status\", \"UNKNOWN\"))}'>{nas.get('status', 'UNKNOWN')}</span></p>"
+        nas_html += f"<p><strong>연결:</strong> {nas.get('connection', 'Unknown')}</p>"
+    
+    # 시스템 섹션
+    system_html = ""
+    if 'system' in results:
+        system = results['system']
+        system_html = f"<p><strong>전체 상태:</strong> <span class='{get_status_class(system.get(\"status\", \"UNKNOWN\"))}'>{system.get('status', 'UNKNOWN')}</span></p>"
+        
+        if 'summary' in system:
+            summary = system['summary']
+            system_html += f"<p><strong>통계:</strong> PASS: {summary.get('pass_count', 0)}, "
+            system_html += f"FAIL: {summary.get('fail_count', 0)}, "
+            system_html += f"WARN: {summary.get('warn_count', 0)}, "
+            system_html += f"SKIP: {summary.get('skip_count', 0)}</p>"
+    
+    # HTML 템플릿
+    html_template = f"""<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edge 시스템 점검 리포트</title>
+    <style>
+        body {{
+            font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }}
+        .header {{
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }}
+        .header h1 {{
+            margin: 0;
+            font-size: 28px;
+        }}
+        .header p {{
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+        }}
+        .section {{
+            background: white;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }}
+        .section h2 {{
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+            margin-top: 0;
+        }}
+        .section h3 {{
+            color: #34495e;
+            margin-top: 20px;
+        }}
+        table {{
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }}
+        th, td {{
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }}
+        th {{
+            background-color: #34495e;
+            color: white;
+            font-weight: bold;
+        }}
+        tr:nth-child(even) {{
+            background-color: #f9f9f9;
+        }}
+        .pass {{
+            color: #27ae60;
+            font-weight: bold;
+        }}
+        .fail {{
+            color: #e74c3c;
+            font-weight: bold;
+        }}
+        .warn {{
+            color: #f39c12;
+            font-weight: bold;
+        }}
+        .skip {{
+            color: #95a5a6;
+            font-weight: bold;
+        }}
+        ul {{
+            margin: 10px 0;
+            padding-left: 20px;
+        }}
+        li {{
+            margin: 5px 0;
+        }}
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Edge 시스템 점검 리포트</h1>
+        <p>점검 시각: {timestamp}</p>
+    </div>
+    
+    {build_section("전체 요약", summary_html)}
+    {build_section("[1/4] UPS/NUT 상태 점검", ups_html) if ups_html else ""}
+    {build_section("[2/4] 카메라 RTSP 연결 점검", cameras_html) if cameras_html else ""}
+    {build_section("[3/4] NAS 상태 점검", nas_html) if nas_html else ""}
+    {build_section("[4/4] 시스템 종합 점검", system_html) if system_html else ""}
+    
+    <div class="section">
+        <p style="text-align: center; color: #7f8c8d; margin-top: 30px;">
+            리포트 생성 시각: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+        </p>
+    </div>
+</body>
+</html>
+"""
+    
+    return html_template
+
+
+def save_html_report(results: Dict[str, Any], output_dir: str = ".") -> str:
+    """
+    HTML 리포트 저장
+    
+    Args:
+        results: 점검 결과 딕셔너리
+        output_dir: 출력 디렉토리
+    
+    Returns:
+        저장된 파일 경로
+    """
+    reports_dir = os.path.join(output_dir, "reports")
+    os.makedirs(reports_dir, exist_ok=True)
+    
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    filename = f"report_{timestamp}.html"
+    filepath = os.path.join(reports_dir, filename)
+    
+    html_content = generate_html_report(results)
+    
+    with open(filepath, 'w', encoding='utf-8') as f:
+        f.write(html_content)
+    
+    return filepath
 

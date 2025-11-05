@@ -1,12 +1,19 @@
 """
 CLI UI 유틸리티 모듈
 colorama를 사용한 색상 출력, 테이블 포맷팅, 사용자 입력 처리
+로깅 시스템과 통합
 """
 import sys
+import logging
 from colorama import init, Fore, Style
 
 # colorama 초기화 (Windows 지원)
 init(autoreset=True)
+
+# 로거 가져오기 (초기화 후 사용)
+def _get_logger():
+    """로거 인스턴스 가져오기"""
+    return logging.getLogger(__name__)
 
 
 class Colors:
@@ -21,41 +28,48 @@ class Colors:
 
 
 def print_header(text: str):
-    """헤더 출력"""
+    """헤더 출력 (로거 래퍼)"""
     print(f"\n{Colors.HEADER}{'=' * 80}{Colors.RESET}")
     print(f"{Colors.HEADER}{text.center(80)}{Colors.RESET}")
     print(f"{Colors.HEADER}{'=' * 80}{Colors.RESET}\n")
+    _get_logger().info(f"=== {text} ===")
 
 
 def print_section(section_num: int, total: int, title: str):
-    """섹션 제목 출력"""
+    """섹션 제목 출력 (로거 래퍼)"""
     print(f"\n{Colors.INFO}[{section_num}/{total}] {title}{Colors.RESET}")
     print(f"{Colors.INFO}{'-' * 80}{Colors.RESET}")
+    _get_logger().info(f"[{section_num}/{total}] {title}")
 
 
 def print_pass(text: str):
-    """PASS 메시지 출력"""
+    """PASS 메시지 출력 (로거 래퍼)"""
     print(f"{Colors.PASS}✓ {text}{Colors.RESET}")
+    _get_logger().info(f"PASS: {text}")
 
 
 def print_fail(text: str):
-    """FAIL 메시지 출력"""
+    """FAIL 메시지 출력 (로거 래퍼)"""
     print(f"{Colors.FAIL}✗ {text}{Colors.RESET}")
+    _get_logger().error(f"FAIL: {text}")
 
 
 def print_skip(text: str):
-    """SKIP 메시지 출력"""
+    """SKIP 메시지 출력 (로거 래퍼)"""
     print(f"{Colors.SKIP}⊘ {text}{Colors.RESET}")
+    _get_logger().warning(f"SKIP: {text}")
 
 
 def print_info(text: str):
-    """정보 메시지 출력"""
+    """정보 메시지 출력 (로거 래퍼)"""
     print(f"{Colors.INFO}ℹ {text}{Colors.RESET}")
+    _get_logger().info(text)
 
 
 def print_warning(text: str):
-    """경고 메시지 출력"""
+    """경고 메시지 출력 (로거 래퍼)"""
     print(f"{Colors.WARNING}⚠ {text}{Colors.RESET}")
+    _get_logger().warning(text)
 
 
 def print_table(headers: list, rows: list):
