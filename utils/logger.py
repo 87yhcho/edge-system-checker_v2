@@ -60,7 +60,8 @@ def setup_logger(log_dir: str = "reports/logs", level: str = "INFO") -> tuple[lo
     # 기존 핸들러 제거 (중복 방지)
     logger.handlers.clear()
     
-    # 파일 핸들러 (모든 레벨 로그)
+    # 파일 핸들러만 추가 (콘솔에는 출력하지 않음)
+    # utils.ui의 print 함수들이 콘솔 출력을 담당
     file_handler = logging.FileHandler(log_file, encoding='utf-8')
     file_handler.setLevel(logging.DEBUG)
     file_formatter = logging.Formatter(
@@ -69,16 +70,6 @@ def setup_logger(log_dir: str = "reports/logs", level: str = "INFO") -> tuple[lo
     )
     file_handler.setFormatter(file_formatter)
     logger.addHandler(file_handler)
-    
-    # 콘솔 핸들러 (색상 포함)
-    console_handler = ColoredConsoleHandler(sys.stdout)
-    log_level = getattr(logging, level.upper(), logging.INFO)
-    console_handler.setLevel(log_level)
-    console_formatter = logging.Formatter(
-        '[%(levelname)-8s] [%(name)s] %(message)s'
-    )
-    console_handler.setFormatter(console_formatter)
-    logger.addHandler(console_handler)
     
     # 로그 로테이션 설정 (30일 이상 된 로그 삭제)
     _cleanup_old_logs(log_dir, days=30)
