@@ -501,7 +501,8 @@ def generate_html_report(results: Dict[str, Any]) -> str:
     ups_html = ""
     if 'ups' in results:
         ups = results['ups']
-        ups_html = f"<p><strong>상태:</strong> <span class='{get_status_class(ups.get(\"status\", \"UNKNOWN\"))}'>{ups.get('status', 'UNKNOWN')}</span></p>"
+        ups_status = ups.get('status', 'UNKNOWN')
+        ups_html = f"<p><strong>상태:</strong> <span class='{get_status_class(ups_status)}'>{ups_status}</span></p>"
         if 'services' in ups:
             ups_html += "<h3>NUT 서비스 상태</h3><ul>"
             for service, status in ups['services'].items():
@@ -535,14 +536,16 @@ def generate_html_report(results: Dict[str, Any]) -> str:
     nas_html = ""
     if 'nas' in results:
         nas = results['nas']
-        nas_html = f"<p><strong>상태:</strong> <span class='{get_status_class(nas.get(\"status\", \"UNKNOWN\"))}'>{nas.get('status', 'UNKNOWN')}</span></p>"
+        nas_status = nas.get('status', 'UNKNOWN')
+        nas_html = f"<p><strong>상태:</strong> <span class='{get_status_class(nas_status)}'>{nas_status}</span></p>"
         nas_html += f"<p><strong>연결:</strong> {nas.get('connection', 'Unknown')}</p>"
     
     # 시스템 섹션
     system_html = ""
     if 'system' in results:
         system = results['system']
-        system_html = f"<p><strong>전체 상태:</strong> <span class='{get_status_class(system.get(\"status\", \"UNKNOWN\"))}'>{system.get('status', 'UNKNOWN')}</span></p>"
+        system_status = system.get('status', 'UNKNOWN')
+        system_html = f"<p><strong>전체 상태:</strong> <span class='{get_status_class(system_status)}'>{system_status}</span></p>"
         
         if 'summary' in system:
             summary = system['summary']
