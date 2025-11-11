@@ -145,19 +145,19 @@ def main(args=None):
     
     # CLI 인자가 없으면 대화형 입력
     if not cli_args.auto and cli_args.interactive:
-    # 전체 실행 모드 선택 (자동/수동)
-    print_info("실행 모드를 선택하세요:")
-    print("  1. 자동 모드 (모든 점검을 자동으로 진행, 확인 없이)")
-    print("  2. 수동 모드 (각 항목마다 확인 후 진행)")
-    run_mode_str = ask_input("실행 모드 선택 [1: 자동 / 2: 수동]", "1")
-    
-    if run_mode_str == "1":
-        full_auto_mode = True
-        print_info("🤖 자동 모드 선택: 모든 점검을 자동으로 진행합니다.")
-    else:
-        full_auto_mode = False
-        print_info("👤 수동 모드 선택: 각 항목마다 확인 후 진행합니다.")
-    print("")
+        # 전체 실행 모드 선택 (자동/수동)
+        print_info("실행 모드를 선택하세요:")
+        print("  1. 자동 모드 (모든 점검을 자동으로 진행, 확인 없이)")
+        print("  2. 수동 모드 (각 항목마다 확인 후 진행)")
+        run_mode_str = ask_input("실행 모드 선택 [1: 자동 / 2: 수동]", "1")
+        
+        if run_mode_str == "1":
+            full_auto_mode = True
+            print_info("🤖 자동 모드 선택: 모든 점검을 자동으로 진행합니다.")
+        else:
+            full_auto_mode = False
+            print_info("👤 수동 모드 선택: 각 항목마다 확인 후 진행합니다.")
+        print("")
         
         # 점검 항목 선택 (CLI에서 지정 안 했을 때만)
         if not cli_args.checks or cli_args.checks == ['all']:
@@ -202,11 +202,11 @@ def main(args=None):
     if cli_args.camera_mode:
         auto_mode = (cli_args.camera_mode == 'auto')
     else:
-    print_info("카메라 점검 모드를 선택하세요:")
-    print("  1. GUI 모드 (장비에서 직접 실행, 영상 확인)")
-    print("  2. Auto 모드 (SSH 원격 실행, 자동 검증)")
-    mode_str = ask_input("모드 선택 [1: GUI / 2: Auto]", "2")
-    
+        print_info("카메라 점검 모드를 선택하세요:")
+        print("  1. GUI 모드 (장비에서 직접 실행, 영상 확인)")
+        print("  2. Auto 모드 (SSH 원격 실행, 자동 검증)")
+        mode_str = ask_input("모드 선택 [1: GUI / 2: Auto]", "2")
+        
         auto_mode = (mode_str != "1")
     
     if auto_mode:
@@ -219,14 +219,14 @@ def main(args=None):
     if cli_args.camera_count is not None:
         camera_count = cli_args.camera_count
     else:
-    camera_count_str = ask_input("점검할 카메라 개수를 입력하세요", "4")
-    try:
-        camera_count = int(camera_count_str)
-        if camera_count < 0:
-            camera_count = 0
-    except ValueError:
-        print_warning("잘못된 입력입니다. 기본값 4를 사용합니다.")
-        camera_count = 4
+        camera_count_str = ask_input("점검할 카메라 개수를 입력하세요", "4")
+        try:
+            camera_count = int(camera_count_str)
+            if camera_count < 0:
+                camera_count = 0
+        except ValueError:
+            print_warning("잘못된 입력입니다. 기본값 4를 사용합니다.")
+            camera_count = 4
     
     print("")
     print_info(f"점검 시작: {results['timestamp']}")
