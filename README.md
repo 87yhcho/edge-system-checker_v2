@@ -161,8 +161,8 @@ Edge 시스템(UPS, 카메라, NAS, 시스템)을 자동으로 점검하는 Pyth
 #### 자동 설치 스크립트
 ```bash
 # 저장소 클론
-git clone https://github.com/87yhcho/edge-system-checker.git
-cd edge-system-checker
+git clone https://github.com/87yhcho/edge-system-checker_v2.git
+cd edge-system-checker_v2
 
 # 설치 스크립트 실행 (UV 자동 설치)
 chmod +x INSTALL_PACKAGES.sh
@@ -173,7 +173,7 @@ exit
 # 다시 SSH 접속
 
 # 환경 변수 설정
-cd edge-system-checker
+cd edge-system-checker_v2
 cp env.example .env
 nano .env  # 실제 값으로 수정
 
@@ -211,8 +211,8 @@ uv run checker.py
 
 ```bash
 # 저장소 클론
-git clone https://github.com/87yhcho/edge-system-checker.git
-cd edge-system-checker
+git clone https://github.com/87yhcho/edge-system-checker_v2.git
+cd edge-system-checker_v2
 
 # 가상환경 생성
 python3 -m venv venv
@@ -281,10 +281,13 @@ python3 checker.py
 ## 📁 프로젝트 구조
 
 ```
-edge-system-checker/
+edge-system-checker_v2/
 ├── checker.py              # 메인 실행 파일
 ├── requirements.txt        # Python 의존성
+├── pyproject.toml         # UV 프로젝트 설정
 ├── env.example            # 환경 변수 템플릿
+├── INSTALL_PACKAGES.sh    # 자동 설치 스크립트
+├── run_edge_checker.sh    # 실행 스크립트
 ├── checks/                # 점검 모듈
 │   ├── __init__.py
 │   ├── ups_check.py       # UPS/NUT 점검
@@ -351,7 +354,7 @@ CAMERA_MEDIAMTX_BASE_PORT=1111
 #### Git Pull 충돌 해결
 ```bash
 # 로컬 변경사항이 있어서 pull이 실패할 때
-cd ~/edge-system-checker
+cd ~/edge-system-checker_v2
 
 # 방법 1: 로컬 변경사항 버리고 원격으로 덮어쓰기 (권장)
 git restore .
@@ -363,9 +366,9 @@ git pull origin main
 git stash pop  # 필요시 다시 적용
 
 # 방법 3: 완전히 재설정 (선택사항)
-rm -rf ~/edge-system-checker
-git clone https://github.com/87yhcho/edge-system-checker.git
-cd edge-system-checker
+rm -rf ~/edge-system-checker_v2
+git clone https://github.com/87yhcho/edge-system-checker_v2.git
+cd edge-system-checker_v2
 ```
 
 ### UV 관련
