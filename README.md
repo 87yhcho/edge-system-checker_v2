@@ -168,7 +168,12 @@ cd edge-system-checker
 chmod +x INSTALL_PACKAGES.sh
 ./INSTALL_PACKAGES.sh
 
+# ⚠️ 중요: 터미널 재시작 (UV PATH 적용)
+exit
+# 다시 SSH 접속
+
 # 환경 변수 설정
+cd edge-system-checker
 cp env.example .env
 nano .env  # 실제 값으로 수정
 
@@ -180,7 +185,15 @@ nano .env  # 실제 값으로 수정
 ```bash
 # UV 설치
 curl -LsSf https://astral.sh/uv/install.sh | sh
-export PATH="$HOME/.cargo/bin:$PATH"
+
+# PATH 설정 (중요!)
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+
+# 터미널 재시작 또는 bashrc 로드
+source ~/.bashrc
+
+# UV 설치 확인
+uv --version
 
 # 시스템 의존성
 sudo apt update
@@ -357,11 +370,34 @@ cd edge-system-checker
 
 ### UV 관련
 
+#### UV 명령어를 찾을 수 없음 (`uv: command not found`)
+```bash
+# 원인: PATH가 설정되지 않음
+# 해결 방법 1: PATH 수동 설정
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+
+# 해결 방법 2: bashrc 다시 로드
+source ~/.bashrc
+
+# 해결 방법 3: 터미널 재시작
+exit
+# 다시 접속
+
+# UV 확인
+uv --version
+```
+
 #### UV 설치 실패
 ```bash
 # 수동 설치
 curl -LsSf https://astral.sh/uv/install.sh | sh
-export PATH="$HOME/.local/bin:$PATH"
+
+# PATH 설정
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+
+# .bashrc에 영구 등록
+echo 'export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
 ```
 
 #### UV가 Python을 찾지 못함
@@ -371,6 +407,22 @@ python3 --version  # 3.11 이상이어야 함
 
 # UV가 사용할 Python 지정
 export UV_PYTHON=$(which python3)
+```
+
+#### INSTALL_PACKAGES.sh 실행 시 UV 오류
+```bash
+# 스크립트 실행 후 터미널 재시작 필요
+./INSTALL_PACKAGES.sh
+
+# 터미널 재시작
+exit
+# 다시 접속
+
+# UV 작동 확인
+uv --version
+
+# 프로그램 실행
+./run_edge_checker.sh
 ```
 
 ### 전통적 pip/venv 방식
