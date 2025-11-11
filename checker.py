@@ -393,29 +393,67 @@ def main(args=None):
     
     # ========== 3. NAS 점검 ==========
     if 'nas' in selected_checks:
-    while True:
-        try:
-            nas_result = check_nas_status(config['nas'])
-            results['nas'] = nas_result
-            progress.update(1, "NAS 점검 완료")
+        while True:
+            try:
+                nas_result = check_nas_status(config['nas'])
+                results['nas'] = nas_result
+                progress.update(1, "NAS 점검 완료")
+                
+                # 자동 모드면 확인 없이 계속 진행
+                if full_auto_mode:
+                    print_info("자동 모드: 다음 단계로 진행합니다.")
+                    break
+                
+                # 사용자 컨펌
+                user_action = ask_continue("NAS 점검 완료. 다음 단계로 진행하시겠습니까?")
+                if user_action == 'quit':
+                    print_warning("사용자가 점검을 중단했습니다.")
+                    results['summary']['status'] = 'QUIT'
+                    save_and_exit(results)
+                    return
+                elif user_action == 'retry':
+                    print_info("NAS 점검을 다시 수행합니다...")
+                    continue  # 루프 계속 (재시도)
+                else:
+                    break  # 루프 탈출 (계속 진행)
             
-            # 자동 모드면 확인 없이 계속 진행
-            if full_auto_mode:
-                print_info("자동 모드: 다음 단계로 진행합니다.")
-                break
-            
-            # 사용자 컨펌
-            user_action = ask_continue("NAS 점검 완료. 다음 단계로 진행하시겠습니까?")
-            if user_action == 'quit':
+            except KeyboardInterrupt:
+                print("")
                 print_warning("사용자가 점검을 중단했습니다.")
-                results['summary']['status'] = 'QUIT'
+                results['summary']['status'] = 'INTERRUPTED'
                 save_and_exit(results)
                 return
-            elif user_action == 'retry':
-                print_info("NAS 점검을 다시 수행합니다...")
-                continue  # 루프 계속 (재시도)
-            else:
-                break  # 루프 탈출 (계속 진행)
+            except Exception as e:
+                print_fail(f"NAS 점검 중 오류 발생: {str(e)}")
+                results['nas'] = {'status': 'ERROR', 'error': str(e)}
+                
+                # 자동 모드면 오류 발생해도 계속 진행
+                if full_auto_mode:
+                    print_info("자동 모드: 오류가 발생했지만 계속 진행합니다.")
+                    break
+                
+                user_action = ask_continue("오류가 발생했습니다. 계속 진행하시겠습니까?")
+                if user_action == 'quit':
+                    save_and_exit(results)
+                    return
+                elif user_action == 'retry':
+                    print_info("NAS 점검을 다시 수행합니다...")
+                    continue  # 루프 계속 (재시도)
+                else:
+                    break  # 루프 탈출 (계속 진행)
+    else:
+        print_info("NAS 점검을 건너뜁니다 (선택되지 않음)")
+        results['nas'] = {'status': 'SKIP', 'reason': 'Not selected'}
+    
+    # ========== 4. 시스템 종합 점검 ==========
+    if 'system' in selected_checks:
+        try:
+            system_result = check_system_status()
+            results['system'] = system_result
+            progress.finish("모든 점검 완료")
+            
+            print("")
+            print_info("모든 점검이 완료되었습니다!")
         
         except KeyboardInterrupt:
             print("")
@@ -424,46 +462,8 @@ def main(args=None):
             save_and_exit(results)
             return
         except Exception as e:
-            print_fail(f"NAS 점검 중 오류 발생: {str(e)}")
-            results['nas'] = {'status': 'ERROR', 'error': str(e)}
-            
-            # 자동 모드면 오류 발생해도 계속 진행
-            if full_auto_mode:
-                print_info("자동 모드: 오류가 발생했지만 계속 진행합니다.")
-                break
-            
-            user_action = ask_continue("오류가 발생했습니다. 계속 진행하시겠습니까?")
-            if user_action == 'quit':
-                save_and_exit(results)
-                return
-            elif user_action == 'retry':
-                print_info("NAS 점검을 다시 수행합니다...")
-                continue  # 루프 계속 (재시도)
-            else:
-                break  # 루프 탈출 (계속 진행)
-    else:
-        print_info("NAS 점검을 건너뜁니다 (선택되지 않음)")
-        results['nas'] = {'status': 'SKIP', 'reason': 'Not selected'}
-    
-    # ========== 4. 시스템 종합 점검 ==========
-    if 'system' in selected_checks:
-    try:
-        system_result = check_system_status()
-        results['system'] = system_result
-            progress.finish("모든 점검 완료")
-        
-        print("")
-        print_info("모든 점검이 완료되었습니다!")
-    
-    except KeyboardInterrupt:
-        print("")
-        print_warning("사용자가 점검을 중단했습니다.")
-        results['summary']['status'] = 'INTERRUPTED'
-        save_and_exit(results)
-        return
-    except Exception as e:
-        print_fail(f"시스템 종합 점검 중 오류 발생: {str(e)}")
-        results['system'] = {'status': 'ERROR', 'error': str(e)}
+            print_fail(f"시스템 종합 점검 중 오류 발생: {str(e)}")
+            results['system'] = {'status': 'ERROR', 'error': str(e)}
     else:
         print_info("시스템 점검을 건너뜁니다 (선택되지 않음)")
         results['system'] = {'status': 'SKIP', 'reason': 'Not selected'}
