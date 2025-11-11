@@ -11,24 +11,29 @@ echo ""
 echo "1. 시스템 패키지 업데이트 중..."
 sudo apt update
 
-# 2. Python 기본 패키지
+# 2. 필수 도구 설치 (curl, git 등)
 echo ""
-echo "2. Python 기본 패키지 설치 중..."
+echo "2. 필수 도구 설치 중..."
+sudo apt install -y curl git
+
+# 3. Python 기본 패키지
+echo ""
+echo "3. Python 기본 패키지 설치 중..."
 sudo apt install -y python3 python3-dev python3-pip
 
-# 3. OpenCV 시스템 의존성 (libopencv-dev는 선택사항)
+# 4. OpenCV 시스템 의존성 (libopencv-dev는 선택사항)
 echo ""
-echo "3. OpenCV 시스템 의존성 설치 중..."
+echo "4. OpenCV 시스템 의존성 설치 중..."
 sudo apt install -y libopencv-dev
 
-# 4. PostgreSQL 클라이언트 라이브러리
+# 5. PostgreSQL 클라이언트 라이브러리
 echo ""
-echo "4. PostgreSQL 클라이언트 라이브러리 설치 중..."
+echo "5. PostgreSQL 클라이언트 라이브러리 설치 중..."
 sudo apt install -y libpq-dev
 
-# 5. UV 설치
+# 6. UV 설치
 echo ""
-echo "5. UV 설치 중..."
+echo "6. UV 설치 중..."
 if ! command -v uv &> /dev/null; then
     curl -LsSf https://astral.sh/uv/install.sh | sh
     
