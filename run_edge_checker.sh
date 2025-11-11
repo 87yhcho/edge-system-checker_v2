@@ -20,13 +20,21 @@ if ! command -v uv &> /dev/null; then
     # UV 설치 스크립트
     curl -LsSf https://astral.sh/uv/install.sh | sh
     
+    # PATH 재설정
+    export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+    
+    # 설치 확인
     if ! command -v uv &> /dev/null; then
-        echo "❌ UV 설치 실패. 수동으로 설치해주세요:"
+        echo "❌ UV 설치 실패. 터미널을 재시작한 후 다시 실행해주세요."
+        echo "   또는 수동으로 설치:"
         echo "   curl -LsSf https://astral.sh/uv/install.sh | sh"
-        echo "   또는 python3으로 실행: python3 checker.py"
-    read -p "Press Enter to close..."
-    exit 1
-fi
+        echo "   source ~/.bashrc"
+        echo ""
+        echo "   또는 python3으로 직접 실행:"
+        echo "   python3 checker.py"
+        read -p "Press Enter to close..."
+        exit 1
+    fi
     echo "✅ UV 설치 완료"
 fi
 

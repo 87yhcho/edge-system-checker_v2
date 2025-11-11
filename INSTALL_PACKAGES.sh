@@ -32,21 +32,32 @@ echo "5. UV 설치 중..."
 if ! command -v uv &> /dev/null; then
     curl -LsSf https://astral.sh/uv/install.sh | sh
     
-    # 현재 셸에서 PATH 추가
-    export PATH="$HOME/.cargo/bin:$PATH"
+    # PATH 설정 (.local/bin과 .cargo/bin 모두 추가)
+    export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
     
     # .bashrc에도 추가 (영구적)
-    if ! grep -q 'export PATH="$HOME/.cargo/bin:$PATH"' ~/.bashrc; then
-        echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> ~/.bashrc
+    if ! grep -q '.local/bin' ~/.bashrc; then
+        echo 'export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"' >> ~/.bashrc
     fi
     
-    echo "✅ UV 설치 완료"
+    # 설치 후 다시 확인
+    source ~/.bashrc 2>/dev/null || true
+    export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+    
+    if command -v uv &> /dev/null; then
+        echo "✅ UV 설치 완료"
+    else
+        echo "⚠️ UV 설치가 완료되었지만 경로를 찾을 수 없습니다."
+        echo "   다음 명령을 실행해주세요:"
+        echo "   source ~/.bashrc"
+        echo "   또는 터미널을 재시작하세요."
+    fi
 else
     echo "✅ UV가 이미 설치되어 있습니다"
 fi
 
 # UV PATH 추가 (즉시 적용)
-export PATH="$HOME/.cargo/bin:$PATH"
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
 
 echo ""
 echo "=========================================="
@@ -54,7 +65,11 @@ echo "✅ 모든 패키지 설치 완료!"
 echo "=========================================="
 echo ""
 echo "설치 확인:"
-echo "  UV 버전: $(uv --version)"
+if command -v uv &> /dev/null; then
+    echo "  UV 버전: $(uv --version)"
+else
+    echo "  UV 버전: (설치됨, 터미널 재시작 필요)"
+fi
 echo "  Python 버전: $(python3 --version)"
 
 echo ""
