@@ -240,55 +240,55 @@ def main(args=None):
     
     # ========== 1. UPS/NUT 점검 ==========
     if 'ups' in selected_checks:
-    while True:
-        try:
-            ups_result = check_ups_status(
-                ups_name=config['nut']['ups_name'],
-                nas_ip=config['nas']['ip']
-            )
-            results['ups'] = ups_result
+        while True:
+            try:
+                ups_result = check_ups_status(
+                    ups_name=config['nut']['ups_name'],
+                    nas_ip=config['nas']['ip']
+                )
+                results['ups'] = ups_result
                 progress.update(1, "UPS 점검 완료")
+                
+                # 자동 모드면 확인 없이 계속 진행
+                if full_auto_mode:
+                    print_info("자동 모드: 다음 단계로 진행합니다.")
+                    break
+                
+                # 사용자 컨펌
+                user_action = ask_continue("UPS 점검 완료. 다음 단계로 진행하시겠습니까?")
+                if user_action == 'quit':
+                    print_warning("사용자가 점검을 중단했습니다.")
+                    results['summary']['status'] = 'QUIT'
+                    save_and_exit(results, output_formats=cli_args.output_format, output_dir=cli_args.output_dir)
+                    return
+                elif user_action == 'retry':
+                    print_info("UPS 점검을 다시 수행합니다...")
+                    continue  # 루프 계속 (재시도)
+                else:
+                    break  # 루프 탈출 (계속 진행)
             
-            # 자동 모드면 확인 없이 계속 진행
-            if full_auto_mode:
-                print_info("자동 모드: 다음 단계로 진행합니다.")
-                break
-            
-            # 사용자 컨펌
-            user_action = ask_continue("UPS 점검 완료. 다음 단계로 진행하시겠습니까?")
-            if user_action == 'quit':
+            except KeyboardInterrupt:
+                print("")
                 print_warning("사용자가 점검을 중단했습니다.")
-                results['summary']['status'] = 'QUIT'
-                    save_and_exit(results, output_formats=cli_args.output_format, output_dir=cli_args.output_dir)
-                return
-            elif user_action == 'retry':
-                print_info("UPS 점검을 다시 수행합니다...")
-                continue  # 루프 계속 (재시도)
-            else:
-                break  # 루프 탈출 (계속 진행)
-        
-        except KeyboardInterrupt:
-            print("")
-            print_warning("사용자가 점검을 중단했습니다.")
-            results['summary']['status'] = 'INTERRUPTED'
+                results['summary']['status'] = 'INTERRUPTED'
                 save_and_exit(results, output_formats=cli_args.output_format, output_dir=cli_args.output_dir)
-            return
-        except Exception as e:
-            print_fail(f"UPS 점검 중 오류 발생: {str(e)}")
-            results['ups'] = {'status': 'ERROR', 'error': str(e)}
-            
-            # 자동 모드면 오류 발생해도 계속 진행
-            if full_auto_mode:
-                print_info("자동 모드: 오류가 발생했지만 계속 진행합니다.")
-                break
-            
-            user_action = ask_continue("오류가 발생했습니다. 계속 진행하시겠습니까?")
-            if user_action == 'quit':
-                    save_and_exit(results, output_formats=cli_args.output_format, output_dir=cli_args.output_dir)
                 return
-            elif user_action == 'retry':
-                print_info("UPS 점검을 다시 수행합니다...")
-                continue  # 루프 계속 (재시도)
+            except Exception as e:
+                print_fail(f"UPS 점검 중 오류 발생: {str(e)}")
+                results['ups'] = {'status': 'ERROR', 'error': str(e)}
+                
+                # 자동 모드면 오류 발생해도 계속 진행
+                if full_auto_mode:
+                    print_info("자동 모드: 오류가 발생했지만 계속 진행합니다.")
+                    break
+                
+                user_action = ask_continue("오류가 발생했습니다. 계속 진행하시겠습니까?")
+                if user_action == 'quit':
+                    save_and_exit(results, output_formats=cli_args.output_format, output_dir=cli_args.output_dir)
+                    return
+                elif user_action == 'retry':
+                    print_info("UPS 점검을 다시 수행합니다...")
+                    continue  # 루프 계속 (재시도)
             else:
                 break  # 루프 탈출 (계속 진행)
     else:
