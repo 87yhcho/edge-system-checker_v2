@@ -5,6 +5,7 @@ from typing import Set
 from fastapi import WebSocket
 import json
 import logging
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -36,10 +37,27 @@ class ConnectionManager:
     
     async def broadcast(self, message: dict):
         """모든 연결된 클라이언트에게 브로드캐스트"""
+        # datetime 객체를 문자열로 변환하는 재귀 함수
+        def serialize_datetime(obj):
+            if isinstance(obj, datetime):
+                return obj.isoformat()
+            elif isinstance(obj, dict):
+                return {k: serialize_datetime(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [serialize_datetime(item) for item in obj]
+            return obj
+        
+        # 메시지를 직렬화 가능하게 변환
+        try:
+            serialized_message = serialize_datetime(message)
+        except Exception as e:
+            logger.error(f"메시지 직렬화 실패: {e}")
+            return
+        
         disconnected = set()
         for connection in self.active_connections:
             try:
-                await connection.send_json(message)
+                await connection.send_json(serialized_message)
             except Exception as e:
                 logger.error(f"브로드캐스트 실패: {e}")
                 disconnected.add(connection)
