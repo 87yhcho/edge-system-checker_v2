@@ -250,40 +250,46 @@ class Dashboard {
             }
         }
         
-        // NAS 점검인 경우 (더 포괄적인 조건)
-        else if (result.ssh_connected !== undefined || result.raid_status || result.disk_info) {
+        // NAS 점검인 경우 (실제 데이터 구조에 맞춤)
+        else if (result.connection !== undefined || result.storage) {
             console.log('NAS 점검 감지:', result);
             
-            if (result.ssh_connected !== undefined) {
-                html += `<strong>SSH 연결:</strong> ${result.ssh_connected ? '✓ 성공' : '✗ 실패'}<br>`;
-            }
-            
-            if (result.system_info) {
-                html += `<strong>호스트:</strong> ${result.system_info.hostname || 'N/A'}<br>`;
-            }
-            
-            if (result.disk_info) {
-                html += `<strong>디스크 사용량:</strong><br>`;
-                // disk_info 배열 순회
-                if (Array.isArray(result.disk_info)) {
-                    result.disk_info.forEach(disk => {
-                        if (disk.mount === '/volume1' || disk.filesystem === '/dev/mapper/cachedev_0') {
-                            html += `&nbsp;&nbsp;Volume1: ${disk.use_percent || 'N/A'} 사용 (${disk.used || 'N/A'}/${disk.size || 'N/A'})<br>`;
-                        }
-                    });
-                } else if (result.disk_info.volume1) {
-                    const vol = result.disk_info.volume1;
-                    html += `&nbsp;&nbsp;Volume1: ${vol.use_percent || 'N/A'}% 사용 (${vol.used || 'N/A'}/${vol.size || 'N/A'})<br>`;
-                }
-            }
-            
-            if (result.raid_status) {
-                const raidOk = result.raid_status.all_healthy !== false;
-                html += `<strong>RAID:</strong> ${raidOk ? '✓ 정상' : '✗ 오류'}`;
-                if (result.raid_status.volume_count) {
-                    html += ` (${result.raid_status.volume_count}개 볼륨)`;
+            // 연결 상태
+            if (result.connection) {
+                const isConnected = result.connection === 'Success';
+                html += `<strong>SSH:</strong> ${isConnected ? '✓ 성공' : '✗ 실패'}`;
+                if (result.connected_port) {
+                    html += ` (포트 ${result.connected_port})`;
                 }
                 html += `<br>`;
+            }
+            
+            // 시스템 정보
+            if (result.system && result.system.hostname) {
+                html += `<strong>호스트:</strong> ${result.system.hostname}<br>`;
+            }
+            
+            // RAID 정보
+            if (result.storage && result.storage.raid_info) {
+                const raidInfo = result.storage.raid_info;
+                const md2 = raidInfo.md2; // 데이터 볼륨
+                if (md2) {
+                    const raidOk = md2.status && !md2.status.includes('_');
+                    html += `<strong>RAID:</strong> ${raidOk ? '✓' : '✗'} ${md2.level.toUpperCase()} `;
+                    html += `(${md2.active}/${md2.disk_count} 디스크, ${Math.round(md2.capacity_gb)}TB)<br>`;
+                }
+            }
+            
+            // 디스크 사용량 (disk_usage 문자열 파싱)
+            if (result.storage && result.storage.disk_usage) {
+                const lines = result.storage.disk_usage.split('\n');
+                const volumeLine = lines.find(line => line.includes('/volume1'));
+                if (volumeLine) {
+                    const parts = volumeLine.trim().split(/\s+/);
+                    if (parts.length >= 5) {
+                        html += `<strong>Volume1:</strong> ${parts[4]} 사용 (${parts[2]}/${parts[1]})<br>`;
+                    }
+                }
             }
         }
         
