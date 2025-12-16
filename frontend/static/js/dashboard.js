@@ -97,19 +97,36 @@ class Dashboard {
     handleProgress(data) {
         const { checkType, progress, message, status } = data;
         
+        console.log('Progress update:', data);  // 디버그용
+        
         // 진행률 바 업데이트
         if (checkType === 'all') {
             const progressBar = document.getElementById('overallProgress');
-            progressBar.style.width = `${progress}%`;
-            progressBar.setAttribute('aria-valuenow', progress);
-            progressBar.textContent = `${progress}%`;
+            if (progressBar) {
+                progressBar.style.width = `${progress}%`;
+                progressBar.setAttribute('aria-valuenow', progress);
+                progressBar.textContent = `${progress}%`;
+            }
         }
         
         // 메시지 표시
         const messageDiv = document.getElementById('statusMessage');
-        messageDiv.textContent = message;
-        messageDiv.className = `alert alert-${status === 'running' ? 'info' : 'success'}`;
-        messageDiv.style.display = 'block';
+        if (messageDiv) {
+            messageDiv.textContent = message;
+            messageDiv.className = `alert alert-${status === 'running' ? 'info' : status === 'completed' ? 'success' : 'warning'}`;
+            messageDiv.style.display = 'block';
+        }
+        
+        // 개별 체크 타입별 카드 업데이트 (진행 중 표시)
+        if (checkType !== 'all') {
+            const card = document.getElementById(`${checkType}Card`);
+            if (card) {
+                const detailsDiv = card.querySelector('.check-details');
+                if (detailsDiv && status === 'running') {
+                    detailsDiv.innerHTML = `<div class="spinner-border spinner-border-sm" role="status"></div> <small>${message}</small>`;
+                }
+            }
+        }
     }
     
     /**
@@ -195,21 +212,62 @@ class Dashboard {
     formatCheckDetails(result) {
         if (!result || typeof result !== 'object') return '';
         
-        let html = '';
+        let html = '<div class="small">';
         
         // 카메라 점검인 경우
         if (result.details && Array.isArray(result.details)) {
-            html += '<ul class="list-unstyled mb-0">';
+            html += '<strong>카메라 상세:</strong><ul class="list-unstyled mb-0 mt-1">';
             result.details.forEach(detail => {
-                const status = detail.source_status || detail.status || 'UNKNOWN';
-                const statusClass = status === 'PASS' ? 'text-success' : 
-                                  status === 'FAIL' ? 'text-danger' : 'text-warning';
-                html += `<li><span class="${statusClass}">${detail.name || 'N/A'}</span></li>`;
+                const sourceStatus = detail.source_status || 'UNKNOWN';
+                const blurStatus = detail.mediamtx_status || 'UNKNOWN';
+                const logStatus = detail.log_status || 'UNKNOWN';
+                
+                const sourceIcon = sourceStatus === 'PASS' ? '✓' : sourceStatus === 'FAIL' ? '✗' : '?';
+                const blurIcon = blurStatus === 'PASS' ? '✓' : blurStatus === 'FAIL' ? '✗' : '?';
+                const logIcon = logStatus === 'PASS' ? '✓' : logStatus === 'FAIL' ? '✗' : '?';
+                
+                html += `<li class="mb-1">${detail.name || 'N/A'} (${detail.ip || 'N/A'})`;
+                html += `<br>&nbsp;&nbsp;<small>원본:${sourceIcon} 블러:${blurIcon} 로그:${logIcon}</small></li>`;
             });
             html += '</ul>';
         }
         
-        return html || '<small class="text-muted">상세 정보 없음</small>';
+        // UPS 점검인 경우
+        else if (result.services || result.ups_data) {
+            if (result.services && result.services.all_active !== undefined) {
+                html += `<strong>서비스:</strong> ${result.services.all_active ? '✓ 정상' : '✗ 오류'}<br>`;
+            }
+            if (result.ups_data && result.ups_data.data) {
+                html += `<strong>UPS 상태:</strong> ${result.ups_data.data['ups.status'] || 'N/A'}<br>`;
+                html += `<strong>배터리:</strong> ${result.ups_data.data['battery.charge'] || 'N/A'}%<br>`;
+            }
+        }
+        
+        // NAS 점검인 경우
+        else if (result.ssh_connected !== undefined) {
+            html += `<strong>SSH 연결:</strong> ${result.ssh_connected ? '✓ 성공' : '✗ 실패'}<br>`;
+            if (result.disk_usage) {
+                html += `<strong>디스크:</strong> 확인됨<br>`;
+            }
+        }
+        
+        // 시스템 점검인 경우
+        else if (result.summary) {
+            const summary = result.summary;
+            html += `<strong>통계:</strong> `;
+            html += `<span class="text-success">✓${summary.pass_count || 0}</span> `;
+            html += `<span class="text-danger">✗${summary.fail_count || 0}</span> `;
+            html += `<span class="text-warning">⚠${summary.warn_count || 0}</span> `;
+            html += `<span class="text-muted">◌${summary.skip_count || 0}</span><br>`;
+            
+            if (summary.failed_items && summary.failed_items.length > 0) {
+                html += `<strong class="text-danger">실패 항목:</strong><br>`;
+                html += `<small>${summary.failed_items.join(', ')}</small><br>`;
+            }
+        }
+        
+        html += '</div>';
+        return html || '<small class="text-muted">대기 중...</small>';
     }
     
     /**
