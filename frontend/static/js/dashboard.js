@@ -216,6 +216,9 @@ class Dashboard {
     formatCheckDetails(result) {
         if (!result || typeof result !== 'object') return '';
         
+        // 디버깅: result 구조 출력
+        console.log('formatCheckDetails - result:', JSON.stringify(result, null, 2));
+        
         let html = '<div class="small">';
         
         // 카메라 점검인 경우
@@ -247,69 +250,94 @@ class Dashboard {
             }
         }
         
-        // NAS 점검인 경우
-        else if (result.ssh_connected !== undefined) {
-            html += `<strong>SSH 연결:</strong> ${result.ssh_connected ? '✓ 성공' : '✗ 실패'}<br>`;
+        // NAS 점검인 경우 (더 포괄적인 조건)
+        else if (result.ssh_connected !== undefined || result.raid_status || result.disk_info) {
+            console.log('NAS 점검 감지:', result);
+            
+            if (result.ssh_connected !== undefined) {
+                html += `<strong>SSH 연결:</strong> ${result.ssh_connected ? '✓ 성공' : '✗ 실패'}<br>`;
+            }
             
             if (result.system_info) {
                 html += `<strong>호스트:</strong> ${result.system_info.hostname || 'N/A'}<br>`;
             }
             
-            if (result.disk_usage) {
+            if (result.disk_info) {
                 html += `<strong>디스크 사용량:</strong><br>`;
-                if (result.disk_usage.volume1) {
-                    const vol = result.disk_usage.volume1;
+                // disk_info 배열 순회
+                if (Array.isArray(result.disk_info)) {
+                    result.disk_info.forEach(disk => {
+                        if (disk.mount === '/volume1' || disk.filesystem === '/dev/mapper/cachedev_0') {
+                            html += `&nbsp;&nbsp;Volume1: ${disk.use_percent || 'N/A'} 사용 (${disk.used || 'N/A'}/${disk.size || 'N/A'})<br>`;
+                        }
+                    });
+                } else if (result.disk_info.volume1) {
+                    const vol = result.disk_info.volume1;
                     html += `&nbsp;&nbsp;Volume1: ${vol.use_percent || 'N/A'}% 사용 (${vol.used || 'N/A'}/${vol.size || 'N/A'})<br>`;
                 }
             }
             
             if (result.raid_status) {
-                const raidOk = result.raid_status.all_healthy;
-                html += `<strong>RAID:</strong> ${raidOk ? '✓ 정상' : '✗ 오류'}<br>`;
+                const raidOk = result.raid_status.all_healthy !== false;
+                html += `<strong>RAID:</strong> ${raidOk ? '✓ 정상' : '✗ 오류'}`;
+                if (result.raid_status.volume_count) {
+                    html += ` (${result.raid_status.volume_count}개 볼륨)`;
+                }
+                html += `<br>`;
             }
         }
         
-        // 시스템 점검인 경우
-        else if (result.summary) {
-            const summary = result.summary;
-            html += `<strong>통계:</strong> `;
-            html += `<span class="text-success">✓${summary.pass_count || 0}</span> `;
-            html += `<span class="text-danger">✗${summary.fail_count || 0}</span> `;
-            html += `<span class="text-warning">⚠${summary.warn_count || 0}</span> `;
-            html += `<span class="text-muted">◌${summary.skip_count || 0}</span><br>`;
+        // 시스템 점검인 경우 (summary 또는 services가 있으면)
+        else if (result.summary || result.services || result.os_info) {
+            console.log('시스템 점검 감지:', result);
+            if (result.summary) {
+                const summary = result.summary;
+                html += `<strong>통계:</strong> `;
+                html += `<span class="text-success">✓${summary.pass_count || 0}</span> `;
+                html += `<span class="text-danger">✗${summary.fail_count || 0}</span> `;
+                html += `<span class="text-warning">⚠${summary.warn_count || 0}</span> `;
+                html += `<span class="text-muted">◌${summary.skip_count || 0}</span><br>`;
+                
+                // 실패 항목 표시
+                if (summary.failed_items && summary.failed_items.length > 0) {
+                    html += `<strong class="text-danger">실패:</strong> `;
+                    html += `<small>${summary.failed_items.slice(0, 3).join(', ')}`;
+                    if (summary.failed_items.length > 3) {
+                        html += ` 외 ${summary.failed_items.length - 3}개`;
+                    }
+                    html += `</small><br>`;
+                }
+                
+                // 경고 항목 표시
+                if (summary.warn_items && summary.warn_items.length > 0) {
+                    html += `<strong class="text-warning">경고:</strong> `;
+                    html += `<small>${summary.warn_items.slice(0, 2).join(', ')}`;
+                    if (summary.warn_items.length > 2) {
+                        html += ` 외 ${summary.warn_items.length - 2}개`;
+                    }
+                    html += `</small><br>`;
+                }
+            }
             
             // 주요 서비스 상태 표시
             if (result.services) {
                 const services = result.services;
                 html += `<strong>주요 서비스:</strong><br>`;
                 const serviceList = ['tomcat', 'postgresql', 'nut-server', 'nut-monitor', 'stream'];
+                let displayedServices = 0;
                 serviceList.forEach(svc => {
                     if (services[svc]) {
                         const icon = services[svc] === 'active' ? '✓' : '✗';
                         const color = services[svc] === 'active' ? 'text-success' : 'text-danger';
                         html += `&nbsp;&nbsp;<span class="${color}">${icon} ${svc}</span><br>`;
+                        displayedServices++;
                     }
                 });
-            }
-            
-            // 실패 항목 표시
-            if (summary.failed_items && summary.failed_items.length > 0) {
-                html += `<strong class="text-danger">실패:</strong> `;
-                html += `<small>${summary.failed_items.slice(0, 3).join(', ')}`;
-                if (summary.failed_items.length > 3) {
-                    html += ` 외 ${summary.failed_items.length - 3}개`;
+                
+                // 서비스가 없으면 대체 메시지
+                if (displayedServices === 0) {
+                    html += `&nbsp;&nbsp;<small class="text-muted">서비스 정보 없음</small><br>`;
                 }
-                html += `</small><br>`;
-            }
-            
-            // 경고 항목 표시
-            if (summary.warn_items && summary.warn_items.length > 0) {
-                html += `<strong class="text-warning">경고:</strong> `;
-                html += `<small>${summary.warn_items.slice(0, 2).join(', ')}`;
-                if (summary.warn_items.length > 2) {
-                    html += ` 외 ${summary.warn_items.length - 2}개`;
-                }
-                html += `</small>`;
             }
         }
         
