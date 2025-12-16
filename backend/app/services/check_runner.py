@@ -247,13 +247,26 @@ class CheckRunner:
     ):
         """점검 결과를 DB에 저장"""
         try:
-            status = result.get('status', 'UNKNOWN')
-            error_message = result.get('error') if status == 'ERROR' else None
+            # datetime 객체를 문자열로 변환하는 재귀 함수
+            def serialize_datetime(obj):
+                if isinstance(obj, datetime):
+                    return obj.isoformat()
+                elif isinstance(obj, dict):
+                    return {k: serialize_datetime(v) for k, v in obj.items()}
+                elif isinstance(obj, list):
+                    return [serialize_datetime(item) for item in obj]
+                return obj
+            
+            # 결과를 JSON 직렬화 가능하게 변환
+            serialized_result = serialize_datetime(result)
+            
+            status = serialized_result.get('status', 'UNKNOWN')
+            error_message = serialized_result.get('error') if status == 'ERROR' else None
             
             history = CheckHistory(
                 check_type=check_type,
                 status=status,
-                results=result,
+                results=serialized_result,
                 error_message=error_message,
                 duration_seconds=int(duration),
                 camera_count=camera_count if check_type == 'camera' else None
