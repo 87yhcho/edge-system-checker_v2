@@ -104,6 +104,15 @@ class CheckRunner:
                     # 결과를 WebSocket으로 전송
                     await manager.send_result(check_type=check_type, result=result)
                     
+                    # 개별 점검 완료 진행 상황 전송
+                    completed_progress = int(((idx + 1) / total_checks) * 100)
+                    await manager.send_progress(
+                        check_type="all",
+                        progress=completed_progress,
+                        message=f"{check_type.upper()} 점검 완료 - {result.get('status', 'UNKNOWN')}",
+                        status="running"
+                    )
+                    
                     # DB에 저장
                     await self._save_to_db(db, check_type, result, time.time() - start_time, camera_count)
                     
