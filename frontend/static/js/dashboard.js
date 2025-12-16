@@ -97,7 +97,8 @@ class Dashboard {
     handleProgress(data) {
         const { checkType, progress, message, status } = data;
         
-        console.log('Progress update:', data);  // 디버그용
+        console.log('Progress update:', JSON.stringify(data));  // 디버그용 - 전체 데이터 출력
+        console.log(`  checkType: ${checkType}, progress: ${progress}, message: ${message}, status: ${status}`);
         
         // 진행률 바 업데이트
         if (checkType === 'all') {
@@ -134,6 +135,9 @@ class Dashboard {
      */
     handleResult(data) {
         const { checkType, result } = data;
+        
+        console.log('Result received:', JSON.stringify(data));  // 디버그용
+        console.log(`  checkType: ${checkType}, status: ${result?.status}`);
         
         this.currentResults[checkType] = result;
         this.updateCheckCard(checkType, result);
