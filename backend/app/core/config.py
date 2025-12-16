@@ -65,7 +65,7 @@ class Settings(BaseSettings):
     TIMEOUT_RTSP_CONNECTION: int = 10
     
     # 스케줄러 설정
-    SCHEDULER_ENABLED: bool = True
+    SCHEDULER_ENABLED: bool = False  # 자동 점검 비활성화
     SCHEDULER_CRON_HOUR: int = 1  # 매일 새벽 1시
     SCHEDULER_CRON_MINUTE: int = 0
     

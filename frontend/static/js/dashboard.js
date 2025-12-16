@@ -250,8 +250,22 @@ class Dashboard {
         // NAS 점검인 경우
         else if (result.ssh_connected !== undefined) {
             html += `<strong>SSH 연결:</strong> ${result.ssh_connected ? '✓ 성공' : '✗ 실패'}<br>`;
+            
+            if (result.system_info) {
+                html += `<strong>호스트:</strong> ${result.system_info.hostname || 'N/A'}<br>`;
+            }
+            
             if (result.disk_usage) {
-                html += `<strong>디스크:</strong> 확인됨<br>`;
+                html += `<strong>디스크 사용량:</strong><br>`;
+                if (result.disk_usage.volume1) {
+                    const vol = result.disk_usage.volume1;
+                    html += `&nbsp;&nbsp;Volume1: ${vol.use_percent || 'N/A'}% 사용 (${vol.used || 'N/A'}/${vol.size || 'N/A'})<br>`;
+                }
+            }
+            
+            if (result.raid_status) {
+                const raidOk = result.raid_status.all_healthy;
+                html += `<strong>RAID:</strong> ${raidOk ? '✓ 정상' : '✗ 오류'}<br>`;
             }
         }
         
@@ -264,9 +278,38 @@ class Dashboard {
             html += `<span class="text-warning">⚠${summary.warn_count || 0}</span> `;
             html += `<span class="text-muted">◌${summary.skip_count || 0}</span><br>`;
             
+            // 주요 서비스 상태 표시
+            if (result.services) {
+                const services = result.services;
+                html += `<strong>주요 서비스:</strong><br>`;
+                const serviceList = ['tomcat', 'postgresql', 'nut-server', 'nut-monitor', 'stream'];
+                serviceList.forEach(svc => {
+                    if (services[svc]) {
+                        const icon = services[svc] === 'active' ? '✓' : '✗';
+                        const color = services[svc] === 'active' ? 'text-success' : 'text-danger';
+                        html += `&nbsp;&nbsp;<span class="${color}">${icon} ${svc}</span><br>`;
+                    }
+                });
+            }
+            
+            // 실패 항목 표시
             if (summary.failed_items && summary.failed_items.length > 0) {
-                html += `<strong class="text-danger">실패 항목:</strong><br>`;
-                html += `<small>${summary.failed_items.join(', ')}</small><br>`;
+                html += `<strong class="text-danger">실패:</strong> `;
+                html += `<small>${summary.failed_items.slice(0, 3).join(', ')}`;
+                if (summary.failed_items.length > 3) {
+                    html += ` 외 ${summary.failed_items.length - 3}개`;
+                }
+                html += `</small><br>`;
+            }
+            
+            // 경고 항목 표시
+            if (summary.warn_items && summary.warn_items.length > 0) {
+                html += `<strong class="text-warning">경고:</strong> `;
+                html += `<small>${summary.warn_items.slice(0, 2).join(', ')}`;
+                if (summary.warn_items.length > 2) {
+                    html += ` 외 ${summary.warn_items.length - 2}개`;
+                }
+                html += `</small>`;
             }
         }
         
