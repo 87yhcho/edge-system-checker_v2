@@ -1,0 +1,49 @@
+/* 대시보드 스타일 */
+body {
+    background-color: #f8f9fa;
+}
+
+.navbar {
+    box-shadow: 0 2px 4px rgba(0,0,0,.1);
+}
+
+.check-card {
+    transition: all 0.3s ease;
+    min-height: 200px;
+}
+
+.check-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,.15);
+}
+
+.status-badge {
+    font-size: 0.9rem;
+    padding: 0.5rem 1rem;
+}
+
+.progress {
+    height: 25px;
+}
+
+#connectionStatus {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    z-index: 1050;
+}
+
+.check-details {
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+}
+
+.history-table {
+    font-size: 0.9rem;
+}
+
+.modal-body pre {
+    max-height: 400px;
+    overflow-y: auto;
+}
+

@@ -22,17 +22,9 @@ wheels/
 
 # Virtual Environment
 venv/
-env/
 ENV/
+env/
 .venv
-
-# UV
-.uv/
-uv.lock
-
-# Environment Variables
-.env
-.env.local
 
 # IDE
 .vscode/
@@ -41,27 +33,23 @@ uv.lock
 *.swo
 *~
 
+# Environment variables
+.env
+.env.local
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+check_history.db
+
+# Logs
+*.log
+logs/
+
 # OS
 .DS_Store
 Thumbs.db
 
-# Reports
-report_*.txt
-
-# Logs
-*.log
-
-# Test files
-test_*.py
-!test_system_module.py
-
-# Archive files
-*.tar.gz
-*.zip
-
-# Documentation (제외할 필요 없으면 주석 처리)
-# *.md
-
-# Backup folders
-edge-system-checker-backup-*/
-
+# Project specific
+edge-system-checker-web/backend/check_history.db
