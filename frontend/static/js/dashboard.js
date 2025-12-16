@@ -293,9 +293,11 @@ class Dashboard {
             }
         }
         
-        // 시스템 점검인 경우 (summary 또는 services가 있으면)
-        else if (result.summary || result.services || result.os_info) {
+        // 시스템 점검인 경우 (실제 데이터 구조에 맞춤)
+        else if (result.summary || result.setup_scripts || result.tomcat_details) {
             console.log('시스템 점검 감지:', result);
+            
+            // 통계 정보
             if (result.summary) {
                 const summary = result.summary;
                 html += `<strong>통계:</strong> `;
@@ -303,46 +305,48 @@ class Dashboard {
                 html += `<span class="text-danger">✗${summary.fail_count || 0}</span> `;
                 html += `<span class="text-warning">⚠${summary.warn_count || 0}</span> `;
                 html += `<span class="text-muted">◌${summary.skip_count || 0}</span><br>`;
-                
-                // 실패 항목 표시
-                if (summary.failed_items && summary.failed_items.length > 0) {
-                    html += `<strong class="text-danger">실패:</strong> `;
-                    html += `<small>${summary.failed_items.slice(0, 3).join(', ')}`;
-                    if (summary.failed_items.length > 3) {
-                        html += ` 외 ${summary.failed_items.length - 3}개`;
-                    }
-                    html += `</small><br>`;
-                }
-                
-                // 경고 항목 표시
-                if (summary.warn_items && summary.warn_items.length > 0) {
-                    html += `<strong class="text-warning">경고:</strong> `;
-                    html += `<small>${summary.warn_items.slice(0, 2).join(', ')}`;
-                    if (summary.warn_items.length > 2) {
-                        html += ` 외 ${summary.warn_items.length - 2}개`;
-                    }
-                    html += `</small><br>`;
-                }
             }
             
-            // 주요 서비스 상태 표시
+            // 주요 서비스 상태 (services 객체 구조가 중첩됨)
             if (result.services) {
                 const services = result.services;
-                html += `<strong>주요 서비스:</strong><br>`;
-                const serviceList = ['tomcat', 'postgresql', 'nut-server', 'nut-monitor', 'stream'];
-                let displayedServices = 0;
-                serviceList.forEach(svc => {
-                    if (services[svc]) {
-                        const icon = services[svc] === 'active' ? '✓' : '✗';
-                        const color = services[svc] === 'active' ? 'text-success' : 'text-danger';
-                        html += `&nbsp;&nbsp;<span class="${color}">${icon} ${svc}</span><br>`;
-                        displayedServices++;
+                html += `<strong>서비스:</strong> `;
+                const serviceNames = ['tomcat', 'postgresql', 'nut-server', 'nut-monitor', 'stream'];
+                const serviceStatus = [];
+                serviceNames.forEach(svc => {
+                    if (services[svc] && services[svc].state) {
+                        const isActive = services[svc].state === 'active';
+                        const icon = isActive ? '✓' : '✗';
+                        serviceStatus.push(icon + svc.replace('nut-', ''));
+                    }
+                });
+                html += `${serviceStatus.slice(0, 3).join(' ')}`;
+                if (serviceStatus.length > 3) {
+                    html += ` 외 ${serviceStatus.length - 3}개`;
+                }
+                html += `<br>`;
+            }
+            
+            // 실패/경고 항목 표시
+            if (result.setup_scripts) {
+                const scripts = result.setup_scripts;
+                const failedItems = [];
+                const warnItems = [];
+                
+                Object.keys(scripts).forEach(key => {
+                    if (scripts[key].status === 'FAIL') {
+                        failedItems.push(scripts[key].value || key.replace(/_/g, ' '));
+                    } else if (scripts[key].status === 'WARN') {
+                        warnItems.push(key.replace(/^(post_install_|nut_setup_)/, '').replace(/_/g, ' '));
                     }
                 });
                 
-                // 서비스가 없으면 대체 메시지
-                if (displayedServices === 0) {
-                    html += `&nbsp;&nbsp;<small class="text-muted">서비스 정보 없음</small><br>`;
+                if (failedItems.length > 0) {
+                    html += `<strong class="text-danger">실패:</strong> <small>${failedItems[0].substring(0, 30)}...</small><br>`;
+                }
+                
+                if (warnItems.length > 0) {
+                    html += `<strong class="text-warning">경고:</strong> <small>${warnItems.slice(0, 2).join(', ')}</small>`;
                 }
             }
         }
