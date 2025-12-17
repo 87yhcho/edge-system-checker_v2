@@ -536,6 +536,12 @@ def check_setup_scripts() -> Dict[str, Any]:
                         'status': 'WARN',
                         'value': f"upssched.conf 설정 이상: {', '.join(issues)}"
                     }
+        except PermissionError as e:
+            # 권한 오류는 WARN으로 처리 (보안상 읽을 수 없는 경우가 정상일 수 있음)
+            results['nut_setup_config'] = {
+                'status': 'WARN',
+                'value': f"upssched.conf 읽기 권한 없음 (보안 설정으로 정상일 수 있음)"
+            }
         except Exception as e:
             results['nut_setup_config'] = {
                 'status': 'FAIL',
