@@ -401,6 +401,7 @@ body {
 .table {
     color: var(--text-primary);
     margin-bottom: 0;
+    background-color: transparent;
 }
 
 .table thead th {
@@ -418,19 +419,39 @@ body {
     border-color: var(--border-color);
     padding: 1rem;
     vertical-align: middle;
+    background-color: transparent;
 }
 
 .table tbody tr {
     transition: background-color 0.2s ease;
+    background-color: transparent;
 }
 
 .table tbody tr:hover {
     background-color: var(--bg-card-hover);
 }
 
+/* Remove Bootstrap's default striped background */
+.table-striped > tbody > tr:nth-of-type(odd) > * {
+    --bs-table-bg-type: transparent;
+    background-color: transparent;
+}
+
 /* ===== HISTORY TABLE ===== */
 .history-table {
     font-size: 0.9rem;
+}
+
+.table-responsive {
+    background-color: transparent;
+}
+
+/* Empty state styling */
+.table tbody td[colspan] {
+    text-align: center;
+    color: var(--text-secondary);
+    font-style: italic;
+    padding: 2rem;
 }
 
 /* ===== UTILITY CLASSES ===== */
@@ -440,6 +461,14 @@ body {
 
 .bg-dark {
     background-color: var(--bg-card) !important;
+}
+
+.text-muted {
+    color: var(--text-muted) !important;
+}
+
+.text-center {
+    text-align: center !important;
 }
 
 /* ===== MODAL ===== */
@@ -516,4 +545,29 @@ body {
 /* ===== LIST STYLES ===== */
 .list-unstyled li {
     padding: 0.25rem 0;
+}
+
+.list-group {
+    background-color: transparent;
+}
+
+.list-group-item {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    transition: all 0.2s ease;
+}
+
+.list-group-item:hover {
+    background-color: var(--bg-card-hover);
+    border-color: var(--accent-primary);
+}
+
+.list-group-flush .list-group-item {
+    border-width: 0 0 1px;
+    border-radius: 0;
+}
+
+.list-group-flush .list-group-item:last-child {
+    border-bottom-width: 0;
 }
