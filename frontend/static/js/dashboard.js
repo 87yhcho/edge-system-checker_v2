@@ -239,10 +239,12 @@ class Dashboard {
             html += '</ul>';
         }
         
-        // UPS 점검인 경우
-        else if (result.services || result.ups_data) {
-            if (result.services && result.services.all_active !== undefined) {
-                html += `<strong>서비스:</strong> ${result.services.all_active ? '✓ 정상' : '✗ 오류'}<br>`;
+        // UPS 점검인 경우 (ups_data가 있거나 services의 값이 문자열인 경우)
+        else if (result.ups_data || (result.services && !result.summary)) {
+            if (result.services && typeof Object.values(result.services)[0] === 'string') {
+                const activeCount = Object.values(result.services).filter(v => v === 'active').length;
+                const totalCount = Object.keys(result.services).length;
+                html += `<strong>서비스:</strong> ${activeCount === totalCount ? '✓' : '✗'} ${activeCount}/${totalCount} 활성<br>`;
             }
             if (result.ups_data && result.ups_data.data) {
                 html += `<strong>UPS 상태:</strong> ${result.ups_data.data['ups.status'] || 'N/A'}<br>`;
