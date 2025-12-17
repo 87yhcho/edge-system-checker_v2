@@ -48,6 +48,9 @@ class Dashboard {
         
         // 초기 상태 업데이트
         this.updateStatus();
+        
+        // 페이지 로드 시 진행 중인 점검 상태 복원
+        this.restoreCheckState();
         this.loadHistory();
     }
     
