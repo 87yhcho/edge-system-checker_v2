@@ -442,6 +442,14 @@ body {
     font-size: 0.9rem;
 }
 
+.history-table tbody td {
+    color: var(--text-primary) !important;
+}
+
+.history-table tbody td small {
+    color: var(--text-secondary) !important;
+}
+
 .table-responsive {
     background-color: transparent;
 }
@@ -449,7 +457,7 @@ body {
 /* Empty state styling */
 .table tbody td[colspan] {
     text-align: center;
-    color: var(--text-secondary);
+    color: var(--text-primary);
     font-style: italic;
     padding: 2rem;
 }
@@ -464,11 +472,40 @@ body {
 }
 
 .text-muted {
-    color: var(--text-muted) !important;
+    color: var(--text-secondary) !important;
 }
 
 .text-center {
     text-align: center !important;
+}
+
+.text-danger {
+    color: var(--accent-danger) !important;
+}
+
+/* Pagination */
+.pagination .page-link {
+    background-color: var(--bg-card);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+.pagination .page-link:hover {
+    background-color: var(--bg-card-hover);
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
+}
+
+.pagination .page-item.active .page-link {
+    background-color: var(--accent-primary);
+    border-color: var(--accent-primary);
+    color: var(--bg-primary);
+}
+
+.pagination .page-item.disabled .page-link {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
+    color: var(--text-muted);
 }
 
 /* ===== MODAL ===== */
@@ -476,6 +513,7 @@ body {
     background: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: 16px;
+    color: var(--text-primary);
 }
 
 .modal-header {
@@ -484,12 +522,17 @@ body {
     padding: 1.5rem;
 }
 
+.modal-header .modal-title {
+    color: var(--text-primary);
+}
+
 .modal-header .btn-close {
     filter: invert(1);
 }
 
 .modal-body {
     padding: 1.5rem;
+    color: var(--text-primary);
 }
 
 .modal-body pre {
@@ -501,6 +544,17 @@ body {
     overflow-y: auto;
     color: var(--text-primary);
     font-size: 0.85rem;
+}
+
+.modal-footer .btn-secondary {
+    background: var(--bg-secondary);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+.modal-footer .btn-secondary:hover {
+    background: var(--bg-card-hover);
+    border-color: var(--accent-primary);
 }
 
 /* ===== ANIMATIONS ===== */
