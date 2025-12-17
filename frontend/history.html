@@ -15,9 +15,9 @@
     <!-- 네비게이션 -->
     <nav class="navbar navbar-dark bg-dark">
         <div class="container-fluid">
-            <span class="navbar-brand mb-0 h1">Edge System Checker</span>
+            <span class="navbar-brand mb-0 h1">⚡ Edge System Checker</span>
             <div>
-                <a href="/" class="btn btn-outline-light btn-sm">대시보드</a>
+                <a href="/" class="btn btn-outline-light btn-sm">🏠 대시보드</a>
             </div>
         </div>
     </nav>
@@ -25,30 +25,30 @@
     <div class="container-fluid mt-4">
         <div class="card">
             <div class="card-header">
-                <h5 class="mb-0">점검 이력</h5>
+                <h5 class="mb-0">📊 점검 이력</h5>
             </div>
             <div class="card-body">
                 <!-- 필터 -->
                 <div class="row mb-3">
                     <div class="col-md-3">
                         <label class="form-label">점검 종류</label>
-                        <select class="form-select" id="filterCheckType">
+                        <select class="form-control" id="filterCheckType">
                             <option value="">전체</option>
-                            <option value="ups">UPS/NUT</option>
-                            <option value="camera">카메라</option>
-                            <option value="nas">NAS</option>
-                            <option value="system">시스템</option>
-                            <option value="all">전체</option>
+                            <option value="ups">🔋 UPS/NUT</option>
+                            <option value="camera">📹 카메라</option>
+                            <option value="nas">💾 NAS</option>
+                            <option value="system">⚙️ 시스템</option>
+                            <option value="all">🎯 전체</option>
                         </select>
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">상태</label>
-                        <select class="form-select" id="filterStatus">
+                        <select class="form-control" id="filterStatus">
                             <option value="">전체</option>
-                            <option value="PASS">PASS</option>
-                            <option value="FAIL">FAIL</option>
-                            <option value="ERROR">ERROR</option>
-                            <option value="SKIP">SKIP</option>
+                            <option value="PASS">✓ PASS</option>
+                            <option value="FAIL">✗ FAIL</option>
+                            <option value="ERROR">⚠ ERROR</option>
+                            <option value="SKIP">◌ SKIP</option>
                         </select>
                     </div>
                     <div class="col-md-2 d-flex align-items-end">
@@ -95,7 +95,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <pre id="detailContent" class="bg-light p-3 rounded"></pre>
+                    <pre id="detailContent"></pre>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
